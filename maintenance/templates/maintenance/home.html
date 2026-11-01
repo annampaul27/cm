@@ -1,0 +1,9 @@
+{% extends 'maintenance/base.html' %}
+{% block content %}
+<h1>Campus Maintenance System</h1>
+<p>Report and track maintenance problems on campus.</p>
+
+{% if not user.is_authenticated %}
+    <a class="btn" href="{% url 'login' %}">Login</a>
+{% endif %}
+{% endblock %}

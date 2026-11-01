@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    {% load static %}
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Campus Maintenance{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'maintenance/styles.css' %}">
+</head>
+<body>
+
+<nav>
+    <a href="{% url 'home' %}">Home</a>
+
+    {% if user.is_authenticated %}
+        <a href="{% url 'submit_request' %}">Submit Request</a>
+        <a href="{% url 'my_requests' %}">My Requests</a>
+
+        {% if user.is_staff %}
+            <a href="{% url 'staff_dashboard' %}">Staff Dashboard</a>
+        {% endif %}
+
+        <a href="{% url 'logout' %}">Logout ({{ user.username }})</a>
+    {% else %}
+        <a href="{% url 'login' %}">Login</a>
+        <a href="{% url 'register' %}">Register</a>
+    {% endif %}
+</nav>
+
+<main class="box">
+    {% for message in messages %}
+        <p class="{{ message.tags }}">{{ message }}</p>
+    {% endfor %}
+
+    {% block content %}{% endblock %}
+</main>
+
+<footer class="site-footer">
+    <p>Campus Maintenance System</p>
+    <span>Report, track, and resolve campus maintenance issues.</span>
+</footer>
+
+</body>
+</html>
