@@ -2,28 +2,79 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
-from django.core.exceptions import PermissionDenied
-from django.views.decorators.http import require_POST
+from django.db.models import Q
+from django.urls import reverse
+from django.utils.http import urlencode
 from .models import MaintenanceRequest
-from .forms import UserRegisterForm, MaintenanceRequestForm, StatusUpdateForm, RequestFilterForm
+from .forms import (
+    UserRegisterForm,
+    MaintenanceRequestForm,
+    StaffMaintenanceRequestForm,
+    TicketFilterForm,
+)
 
 
 def home(request):
-    return render(request, 'maintenance/home.html')
+    if not request.user.is_authenticated:
+        if request.method == 'POST':
+            return redirect('login')
+        return render(request, 'maintenance/home.html')
 
+    queryset = MaintenanceRequest.objects.all()
+    if not request.user.is_staff:
+        queryset = queryset.filter(user=request.user)
 
-# ---------- FILTER HELPER ----------
+    if request.method == 'POST':
+        if request.POST.get('action') != 'delete':
+            return redirect('home')
+        ticket = get_object_or_404(queryset, pk=request.POST.get('ticket_id'))
+        ticket.delete()
+        return _redirect_to_filtered_home(request.POST, prefix='filter_')
 
-def _apply_request_filters(request, queryset):
-    filter_form = RequestFilterForm(request.GET or None)
+    filter_form = TicketFilterForm(request.GET)
     if filter_form.is_valid():
-        status = filter_form.cleaned_data.get('status')
-        category = filter_form.cleaned_data.get('category')
-        if status:
-            queryset = queryset.filter(status=status)
-        if category:
-            queryset = queryset.filter(category=category)
-    return queryset, filter_form
+        query = filter_form.cleaned_data['q'].strip()
+        if query:
+            for term in query.split():
+                search_filter = (
+                    Q(title__icontains=term)
+                    | Q(description__icontains=term)
+                    | Q(location__icontains=term)
+                    | Q(category__icontains=term)
+                    | Q(priority__icontains=term)
+                    | Q(status__icontains=term)
+                )
+                search_filter |= (
+                    Q(user__username__icontains=term)
+                    | Q(user__email__icontains=term)
+                )
+                if term.isdigit():
+                    search_filter |= Q(pk=term)
+                queryset = queryset.filter(search_filter)
+        if filter_form.cleaned_data['category']:
+            queryset = queryset.filter(category=filter_form.cleaned_data['category'])
+        if filter_form.cleaned_data['status']:
+            queryset = queryset.filter(status=filter_form.cleaned_data['status'])
+        if filter_form.cleaned_data['priority']:
+            queryset = queryset.filter(priority=filter_form.cleaned_data['priority'])
+
+    tickets = queryset.select_related('user').order_by('-date_reported')
+    return render(request, 'maintenance/home.html', {
+        'tickets': tickets,
+        'filter_form': filter_form,
+    })
+
+
+def _redirect_to_filtered_home(data, prefix=''):
+    filters = {
+        key: data.get(f'{prefix}{key}', '')
+        for key in ('q', 'category', 'status', 'priority')
+        if data.get(f'{prefix}{key}')
+    }
+    url = reverse('home')
+    if filters:
+        url = f'{url}?{urlencode(filters)}'
+    return redirect(url)
 
 
 # ---------- AUTHENTICATION ----------
@@ -67,84 +118,25 @@ def submit_request(request):
             obj = form.save(commit=False)   # don't save yet
             obj.user = request.user         # attach logged-in user
             obj.save()
-            return redirect('my_requests')
+            return redirect('home')
     else:
         form = MaintenanceRequestForm()
     return render(request, 'maintenance/submit_request.html', {'form': form})
 
 
 @login_required
-def my_requests(request):
-    requests, filter_form = _apply_request_filters(
-        request, MaintenanceRequest.objects.filter(user=request.user))
-    return render(request, 'maintenance/my_requests.html',
-                  {'requests': requests, 'filter_form': filter_form})
-
-
-@login_required
-def request_detail(request, pk):
-    obj = get_object_or_404(MaintenanceRequest, pk=pk)
-    if not (request.user == obj.user or request.user.is_staff):
-        return redirect('home')
-    return render(request, 'maintenance/request_detail.html', {'maintenance_request': obj})
-
-
-@login_required
 def edit_request(request, pk):
-    obj = get_object_or_404(MaintenanceRequest, pk=pk, user=request.user)
+    queryset = MaintenanceRequest.objects.all()
+    if not request.user.is_staff:
+        queryset = queryset.filter(user=request.user)
+    obj = get_object_or_404(queryset, pk=pk)
+    form_class = StaffMaintenanceRequestForm if request.user.is_staff else MaintenanceRequestForm
     if request.method == 'POST':
-        form = MaintenanceRequestForm(request.POST, instance=obj)
+        form = form_class(request.POST, instance=obj)
         if form.is_valid():
             form.save()
-            return redirect('my_requests')
+            return redirect('home')
     else:
-        form = MaintenanceRequestForm(instance=obj)
+        form = form_class(instance=obj)
     return render(request, 'maintenance/edit_request.html',
                   {'form': form, 'maintenance_request': obj})
-
-
-@login_required
-def delete_request(request, pk):
-    obj = get_object_or_404(MaintenanceRequest, pk=pk, user=request.user)
-    if request.method == 'POST':
-        obj.delete()
-    return redirect('my_requests')
-
-
-# ---------- STAFF ONLY ----------
-
-@login_required
-#@user_passes_test(lambda u: u.is_staff)
-def staff_dashboard(request):
-    if not request.user.is_staff:
-        raise PermissionDenied
-    requests, filter_form = _apply_request_filters(request, MaintenanceRequest.objects.all())
-    return render(request, 'maintenance/staff_dashboard.html',
-                  {'requests': requests, 'filter_form': filter_form})
-
-
-@login_required
-#@user_passes_test(lambda u: u.is_staff)
-def staff_update_status(request, pk):
-    if not request.user.is_staff:
-        raise PermissionDenied
-    obj = get_object_or_404(MaintenanceRequest, pk=pk)
-    if request.method == 'POST':
-        form = StatusUpdateForm(request.POST, instance=obj)
-        if form.is_valid():
-            form.save()
-            return redirect('staff_dashboard')
-    else:
-        form = StatusUpdateForm(instance=obj)
-    return render(request, 'maintenance/staff_update_status.html',
-                  {'form': form, 'maintenance_request': obj})
-
-
-@login_required
-@require_POST
-def staff_delete_request(request, pk):
-    if not request.user.is_staff:
-        raise PermissionDenied
-    obj = get_object_or_404(MaintenanceRequest, pk=pk)
-    obj.delete()
-    return redirect('staff_dashboard')

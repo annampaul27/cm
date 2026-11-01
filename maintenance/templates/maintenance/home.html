@@ -1,9 +1,112 @@
 {% extends 'maintenance/base.html' %}
 {% block content %}
-<h1>Campus Maintenance System</h1>
-<p>Report and track maintenance problems on campus.</p>
+{% if user.is_authenticated %}
+    <h1>{% if user.is_staff %}All Tickets{% else %}My Tickets{% endif %}</h1>
+    <p>{% if user.is_staff %}Review and manage campus maintenance tickets.{% else %}Search and manage your maintenance tickets.{% endif %}</p>
+    <a class="btn" href="{% url 'submit_request' %}">Submit a Ticket</a>
 
-{% if not user.is_authenticated %}
+    <form class="filter-form ticket-filter-form" method="get" action="{% url 'home' %}">
+        {{ filter_form.as_p }}
+        <button type="submit">Search / Filter</button>
+        <a href="{% url 'home' %}">Clear</a>
+    </form>
+
+    <table class="ticket-table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Description</th>
+                {% if user.is_staff %}<th>Submitted By</th>{% endif %}
+                <th>Category</th>
+                <th>Location</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ticket in tickets %}
+            <tr>
+                <td>{{ ticket.title }}</td>
+                <td>{{ ticket.description }}</td>
+                {% if user.is_staff %}<td>{{ ticket.user.username }}</td>{% endif %}
+                <td>{{ ticket.get_category_display }}</td>
+                <td>{{ ticket.location }}</td>
+                <td>{{ ticket.get_priority_display }}</td>
+                <td>{{ ticket.get_status_display }}</td>
+                <td class="ticket-actions">
+                    <a class="btn action-button" href="{% url 'edit_request' ticket.pk %}">Edit</a>
+                    <form class="inline-form delete-ticket-form" method="post" action="{% url 'home' %}"
+                          data-ticket-title="{{ ticket.title }}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="ticket_id" value="{{ ticket.pk }}">
+                        <input type="hidden" name="filter_q" value="{{ filter_form.q.value|default:'' }}">
+                        <input type="hidden" name="filter_category" value="{{ filter_form.category.value|default:'' }}">
+                        <input type="hidden" name="filter_status" value="{{ filter_form.status.value|default:'' }}">
+                        <input type="hidden" name="filter_priority" value="{{ filter_form.priority.value|default:'' }}">
+                        <button class="delete-button action-button" type="submit">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="{% if user.is_staff %}8{% else %}7{% endif %}">No tickets match your search and filters.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <dialog class="confirm-dialog" id="delete-confirmation" aria-labelledby="delete-confirmation-title">
+        <h2 id="delete-confirmation-title">Delete ticket?</h2>
+        <p id="delete-confirmation-message">This action cannot be undone.</p>
+        <div class="form-actions">
+            <button class="delete-button" id="confirm-delete-ticket" type="button">Delete ticket</button>
+            <button class="secondary-button" id="cancel-delete-ticket" type="button">Cancel</button>
+        </div>
+    </dialog>
+
+    <script>
+        const deleteDialog = document.getElementById('delete-confirmation');
+        const deleteMessage = document.getElementById('delete-confirmation-message');
+        let pendingDeleteForm;
+
+        document.addEventListener('submit', (event) => {
+            const form = event.target.closest('.delete-ticket-form');
+            if (!form) {
+                return;
+            }
+
+            if (!deleteDialog || typeof deleteDialog.showModal !== 'function') {
+                if (!window.confirm('Delete this ticket? This action cannot be undone.')) {
+                    event.preventDefault();
+                }
+                return;
+            }
+
+            event.preventDefault();
+            pendingDeleteForm = form;
+            deleteMessage.textContent = `Delete "${form.dataset.ticketTitle}"? This action cannot be undone.`;
+            deleteDialog.showModal();
+        });
+
+        document.getElementById('confirm-delete-ticket').addEventListener('click', () => {
+            if (pendingDeleteForm) {
+                pendingDeleteForm.submit();
+            }
+        });
+
+        document.getElementById('cancel-delete-ticket').addEventListener('click', () => {
+            deleteDialog.close();
+            pendingDeleteForm = null;
+        });
+
+        deleteDialog.addEventListener('close', () => {
+            pendingDeleteForm = null;
+        });
+    </script>
+{% else %}
+    <h1>Campus Maintenance System</h1>
+    <p>Report and track maintenance problems on campus.</p>
     <a class="btn" href="{% url 'login' %}">Login</a>
+    <a class="btn" href="{% url 'register' %}">Register</a>
 {% endif %}
 {% endblock %}

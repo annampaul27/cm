@@ -1,9 +1,0 @@
-{% extends 'maintenance/base.html' %}
-{% block content %}
-<h2>Update Status: {{ maintenance_request.title }}</h2>
-<form class="stacked-form" method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button class="btn">Update</button>
-</form>
-{% endblock %}

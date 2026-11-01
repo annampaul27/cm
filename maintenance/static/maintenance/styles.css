@@ -165,7 +165,7 @@ form.stacked-form p {
 
 form.filter-form {
     display: grid;
-    grid-template-columns: repeat(2, minmax(140px, 1fr)) auto auto;
+    grid-template-columns: repeat(4, minmax(120px, 1fr)) auto auto;
     align-items: end;
     gap: 0.85rem;
     max-width: none;
@@ -302,6 +302,73 @@ table tr:hover {
     align-items: center;
     gap: 0.55rem;
     white-space: nowrap;
+}
+
+.ticket-actions {
+    min-width: 190px;
+}
+
+.ticket-actions details {
+    margin-bottom: 0.5rem;
+}
+
+.ticket-actions summary {
+    width: fit-content;
+    list-style: none;
+}
+
+.ticket-actions summary::-webkit-details-marker {
+    display: none;
+}
+
+.form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.secondary-button {
+    border: 1px solid var(--line);
+    background: #ffffff;
+    box-shadow: none;
+    color: var(--brand-dark);
+}
+
+.secondary-button:hover {
+    background: #eff6ff;
+    color: var(--brand-dark);
+}
+
+.confirm-dialog {
+    width: min(100% - 2rem, 440px);
+    padding: 1.5rem;
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    color: var(--ink);
+}
+
+.confirm-dialog::backdrop {
+    background: rgb(15 23 42 / 55%);
+    backdrop-filter: blur(2px);
+}
+
+.confirm-dialog h2 {
+    margin-bottom: 0.75rem;
+}
+
+.confirm-dialog p {
+    margin-bottom: 1.25rem;
+}
+
+.ticket-table {
+    min-width: 900px;
+}
+
+.ticket-table td {
+    max-width: 340px;
+    overflow-wrap: anywhere;
 }
 
 .action-button {

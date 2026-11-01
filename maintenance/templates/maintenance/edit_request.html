@@ -4,6 +4,9 @@
 <form class="stacked-form" method="post">
     {% csrf_token %}
     {{ form.as_p }}
-    <button class="btn">Save</button>
+    <div class="form-actions">
+        <button class="btn" type="submit">Save Changes</button>
+        <a class="btn secondary-button" href="{% url 'home' %}">Cancel</a>
+    </div>
 </form>
 {% endblock %}
