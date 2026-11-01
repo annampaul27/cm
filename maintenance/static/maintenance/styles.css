@@ -339,29 +339,6 @@ table tr:hover {
     color: var(--brand-dark);
 }
 
-.confirm-dialog {
-    width: min(100% - 2rem, 440px);
-    padding: 1.5rem;
-    border: 1px solid var(--line);
-    border-radius: 1rem;
-    background: var(--surface);
-    box-shadow: var(--shadow);
-    color: var(--ink);
-}
-
-.confirm-dialog::backdrop {
-    background: rgb(15 23 42 / 55%);
-    backdrop-filter: blur(2px);
-}
-
-.confirm-dialog h2 {
-    margin-bottom: 0.75rem;
-}
-
-.confirm-dialog p {
-    margin-bottom: 1.25rem;
-}
-
 .ticket-table {
     min-width: 900px;
 }

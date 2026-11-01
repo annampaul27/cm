@@ -1,0 +1,15 @@
+{% extends 'maintenance/base.html' %}
+{% block content %}
+<h2>Confirm ticket deletion</h2>
+<p>Are you sure you want to delete “{{ maintenance_request.title }}”? This action cannot be undone.</p>
+
+<form class="stacked-form" method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="form-actions">
+        <button class="delete-button" type="submit">Delete Ticket</button>
+        <a class="btn secondary-button" href="{{ cancel_url }}">Cancel</a>
+    </div>
+</form>
+{% endblock %}
+#delete_request.html

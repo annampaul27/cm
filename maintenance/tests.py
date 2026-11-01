@@ -153,18 +153,31 @@ class MaintenanceRequestViewTests(TestCase):
 
     def test_user_can_delete_ticket_from_home(self):
         self.client.force_login(self.user)
-        response = self.client.post(reverse('home'), {
-            'action': 'delete',
-            'ticket_id': self.request.pk,
+        delete_url = reverse('delete_request', args=[self.request.pk])
+        response = self.client.get(delete_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Confirm ticket deletion')
+        self.assertTrue(MaintenanceRequest.objects.filter(pk=self.request.pk).exists())
+
+        response = self.client.post(delete_url, {
+            'confirm': 'yes',
+            'filter_q': '',
+            'filter_category': '',
+            'filter_status': '',
+            'filter_priority': '',
         })
         self.assertRedirects(response, reverse('home'))
         self.assertFalse(MaintenanceRequest.objects.filter(pk=self.request.pk).exists())
 
     def test_staff_can_delete_ticket_from_home(self):
         self.client.force_login(self.staff)
-        response = self.client.post(reverse('home'), {
-            'action': 'delete',
-            'ticket_id': self.request.pk,
+        delete_url = reverse('delete_request', args=[self.request.pk])
+        response = self.client.post(delete_url, {
+            'confirm': 'yes',
+            'filter_q': '',
+            'filter_category': '',
+            'filter_status': '',
+            'filter_priority': '',
         })
         self.assertRedirects(response, reverse('home'))
         self.assertFalse(MaintenanceRequest.objects.filter(pk=self.request.pk).exists())
@@ -184,18 +197,12 @@ class MaintenanceRequestViewTests(TestCase):
             location='Block B',
             priority='low',
         )
-        response = self.client.post(reverse('home'), {
-            'action': 'delete',
-            'ticket_id': other_ticket.pk,
-        })
+        response = self.client.get(reverse('delete_request', args=[other_ticket.pk]))
         self.assertEqual(response.status_code, 404)
         self.assertTrue(MaintenanceRequest.objects.filter(pk=other_ticket.pk).exists())
 
-    def test_home_delete_requires_post(self):
+    def test_delete_confirmation_rejects_invalid_post(self):
         self.client.force_login(self.staff)
-        response = self.client.get(reverse('home'), {
-            'action': 'delete',
-            'ticket_id': self.request.pk,
-        })
+        response = self.client.post(reverse('delete_request', args=[self.request.pk]), {})
         self.assertEqual(response.status_code, 200)
         self.assertTrue(MaintenanceRequest.objects.filter(pk=self.request.pk).exists())
